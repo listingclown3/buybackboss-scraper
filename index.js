@@ -1,24 +1,58 @@
 const axios = require("axios");
 const fs = require("fs");
 const { format } = require("date-fns");
+const path = require("path");
 
 const CSV_FILE_PATH = "phone_prices.csv";
 const API_ENDPOINT = "https://buybackboss.com/api.php";
 const REQUEST_DELAY = 1000; // 1 second delay between requests
 
+// Logging constants
+const LOGS_DIR = "logs";
+const API_LOG_FILE = path.join(LOGS_DIR, "api.log");
+const ERROR_LOG_FILE = path.join(LOGS_DIR, "error.log");
+const SHOULD_LOG = false;
+
+// Logging utility functions
+function ensureLogsDirectory() {
+  if (!fs.existsSync(LOGS_DIR)) {
+    fs.mkdirSync(LOGS_DIR);
+  }
+}
+
+function logToFile(filePath, message) {
+  const timestamp = format(new Date(), "yyyy-MM-dd HH:mm:ss");
+  const logEntry = `[${timestamp}] ${message}\n`;
+  fs.appendFileSync(filePath, logEntry);
+}
+
+function logAPI(type, message, data = null) {
+  const logMessage = `[${type}] ${message}${data ? '\nData: ' + JSON.stringify(data, null, 2) : ''}`;
+  logToFile(API_LOG_FILE, logMessage);
+}
+
+function logError(error, context = '') {
+  const errorMessage = `[ERROR] ${context}\n${error.stack || error.message || error}`;
+  logToFile(ERROR_LOG_FILE, errorMessage);
+  console.error(errorMessage);
+}
+
 // Function to append data to the CSV
 function appendToCSV(data) {
   try {
     const csvRow = Object.values(data).join(",") + "\n";
-    console.log("Writing row to CSV:", csvRow.trim());
+    if (SHOULD_LOG) console.log("Writing row to CSV:", csvRow.trim());
+    logAPI('CSV', 'Writing row to CSV', data);
 
     if (!fs.existsSync(CSV_FILE_PATH)) {
       const headers = "Timestamp,Phone Model,Carrier,Storage,Condition,Price\n";
       fs.writeFileSync(CSV_FILE_PATH, headers);
+      logAPI('CSV', 'Created new CSV file with headers');
     }
 
     fs.appendFileSync(CSV_FILE_PATH, csvRow);
   } catch (error) {
+    logError(error, 'Failed to write to CSV');
     console.error("Failed to write to CSV:", error);
   }
 }
@@ -30,27 +64,48 @@ async function fetchData(attrOptions) {
 
   try {
     const payload = { product_group: "apple-phone", attr_options: attrOptions };
+    
+    logAPI('REQUEST', `Endpoint: ${API_ENDPOINT}`, {
+      step: currentStep,
+      payload: payload
+    });
+
     const response = await axios.post(API_ENDPOINT, payload, {
       headers: { "Content-Type": "application/json" },
       timeout: 10000,
     });
 
+    logAPI('RESPONSE', `Status: ${response.status}`, {
+      step: currentStep,
+      data: response.data
+    });
+
     return response.data;
   } catch (error) {
+    const errorDetails = {
+      step: currentStep,
+      message: error.message,
+      code: error.code,
+      response: error.response ? {
+        status: error.response.status,
+        data: error.response.data
+      } : null
+    };
+    
+    logError(error, `API Request Failed for ${currentStep}`);
+    logAPI('ERROR', `Failed request for ${currentStep}`, errorDetails);
+    
     console.error(`Error fetching data for ${currentStep}:`, error.message);
     return null;
   }
 }
 
-// Function to extract the phone model from the selectedOptionList
+// [Previous extraction functions remain the same]
 function extractPhoneModel(selectedOptionList) {
-    // Find all options that start with "iPhone"
     const iPhoneOptions = selectedOptionList.filter(option => 
       option.option_name.startsWith("iPhone")
     );
     
-    // If we have multiple iPhone options, return the one with the longest name
-    // as it's likely to be the most specific (e.g., "iPhone 16 Pro Max" instead of just "iPhone")
     if (iPhoneOptions.length > 0) {
       return iPhoneOptions.reduce((longest, current) => 
         current.option_name.length > longest.option_name.length 
@@ -60,12 +115,9 @@ function extractPhoneModel(selectedOptionList) {
     }
     
     return "Unknown Model";
-  }
-  
+}
 
-// Function to extract the carrier from the selectedOptionList
 function extractCarrier(selectedOptionList) {
-  // List of known carriers
   const carriers = ["AT&T", "T-Mobile", "Verizon", "Unlocked", "Other"];
   const carrierOption = selectedOptionList.find((option) =>
     carriers.includes(option.option_name)
@@ -73,12 +125,10 @@ function extractCarrier(selectedOptionList) {
   return carrierOption ? carrierOption.option_name : "Unknown Carrier";
 }
 
-// Function to validate if the storage option is valid
 function isValidStorage(storage) {
-  return storage && (storage.includes("GB") || storage.includes("TB")); // Ensure storage option includes "GB" or "TB"
+  return storage && (storage.includes("GB") || storage.includes("TB"));
 }
 
-// Function to extract the storage from the selectedOptionList
 function extractStorage(selectedOptionList) {
   const storageOption = selectedOptionList.find(
     (option) => option.option_name.includes("GB") || option.option_name.includes("TB")
@@ -88,70 +138,74 @@ function extractStorage(selectedOptionList) {
 
 // Function to process the response and extract data
 async function processResponse(data, attrOptions) {
-  if (!data) return;
+  if (!data) {
+    logAPI('PROCESS', 'No data to process', { attrOptions });
+    return;
+  }
 
-  // If productList contains pricing data, extract and write to CSV
-  if (data.productList && data.productList[0]?.price_6 !== undefined) {
-    const phoneModel = extractPhoneModel(data.selectedOptionList);
-    const carrier = extractCarrier(data.selectedOptionList);
-    const storage = extractStorage(data.selectedOptionList);
+  try {
+    logAPI('PROCESS', 'Starting data processing', { attrOptions });
 
-    // Skip if storage is invalid or missing
-    if (!isValidStorage(storage)) {
-      console.log(`Skipping invalid storage option: ${storage}`);
-      return;
-    }
+    if (data.productList && data.productList[0]?.price_6 !== undefined) {
+      const phoneModel = extractPhoneModel(data.selectedOptionList);
+      const carrier = extractCarrier(data.selectedOptionList);
+      const storage = extractStorage(data.selectedOptionList);
 
-    if (!phoneModel || !carrier || !storage) {
-      console.error("Missing required data fields:", {
-        phoneModel,
-        carrier,
-        storage,
-      });
-      return;
-    }
+      if (!isValidStorage(storage)) {
+        logAPI('SKIP', `Invalid storage option: ${storage}`);
+        console.log(`Skipping invalid storage option: ${storage}`);
+        return;
+      }
 
-    console.log(`Parsed data: phoneModel=${phoneModel}, carrier=${carrier}, storage=${storage}`);
+      if (!phoneModel || !carrier || !storage) {
+        logAPI('ERROR', 'Missing required data fields', { phoneModel, carrier, storage });
+        console.error("Missing required data fields:", { phoneModel, carrier, storage });
+        return;
+      }
 
-    const conditions = [
-      { id: "6", name: "Brand New", priceKey: "price_6" },
-      { id: "5", name: "Flawless", priceKey: "price_5" },
-      { id: "4", name: "Good", priceKey: "price_4" },
-      { id: "11", name: "Average", priceKey: "price_11" },
-      { id: "3", name: "Fair", priceKey: "price_3" },
-      { id: "1", name: "Faulty", priceKey: "price_1" },
-    ];
+      if (SHOULD_LOG) console.log(`Processing data for: ${phoneModel}, ${carrier}, ${storage}`);
+      logAPI('INFO', 'Parsed product details', { phoneModel, carrier, storage });
 
-    for (const product of data.productList) {
-      for (const condition of conditions) {
-        if (product[condition.priceKey]) {
-          const timestamp = format(new Date(), "yyyy-MM-dd HH:mm:ss");
-          const price = product[condition.priceKey];
+      const conditions = [
+        { id: "6", name: "Brand New", priceKey: "price_6" },
+        { id: "5", name: "Flawless", priceKey: "price_5" },
+        { id: "4", name: "Good", priceKey: "price_4" },
+        { id: "11", name: "Average", priceKey: "price_11" },
+        { id: "3", name: "Fair", priceKey: "price_3" },
+        { id: "1", name: "Faulty", priceKey: "price_1" },
+      ];
 
-          console.log(`Found price for condition ${condition.name}: $${price}`);
+      for (const product of data.productList) {
+        for (const condition of conditions) {
+          if (product[condition.priceKey]) {
+            const timestamp = format(new Date(), "yyyy-MM-dd HH:mm:ss");
+            const price = product[condition.priceKey];
 
-          appendToCSV({
-            Timestamp: timestamp,
-            "Phone Model": phoneModel,
-            Carrier: carrier,
-            Storage: storage,
-            Condition: condition.name,
-            Price: price,
-          });
+            logAPI('PRICE', `Found price for ${phoneModel}`, {
+              condition: condition.name,
+              price: price
+            });
 
-          console.log(`Logged: ${phoneModel} | ${carrier} | ${storage} | ${condition.name} | $${price}`);
-        } else {
-          console.log(`No price found for condition: ${condition.name}`);
+            appendToCSV({
+              Timestamp: timestamp,
+              "Phone Model": phoneModel,
+              Carrier: carrier,
+              Storage: storage,
+              Condition: condition.name,
+              Price: price,
+            });
+          }
         }
       }
+    } else if (data.productList) {
+      for (const option of data.productList) {
+        await new Promise((resolve) => setTimeout(resolve, REQUEST_DELAY));
+        await fetchAndProcessData([...attrOptions, option.url]);
+      }
     }
-  }
-  // If productList contains further options, recursively fetch data
-  else if (data.productList) {
-    for (const option of data.productList) {
-      await new Promise((resolve) => setTimeout(resolve, REQUEST_DELAY)); // Add delay
-      await fetchAndProcessData([...attrOptions, option.url]);
-    }
+  } catch (error) {
+    logError(error, 'Error in processResponse');
+    throw error;
   }
 }
 
@@ -164,14 +218,27 @@ async function fetchAndProcessData(attrOptions = ["apple", "iphone"]) {
 // Main function
 (async () => {
   try {
+    initializeLogging();
     console.log("Starting script...");
     const startTime = Date.now();
 
     await fetchAndProcessData();
 
     const endTime = Date.now();
-    console.log(`Script completed in ${(endTime - startTime) / 1000} seconds.`);
+    const duration = (endTime - startTime) / 1000;
+    const completionMessage = `Script completed in ${duration} seconds`;
+    console.log(completionMessage);
+    logAPI('INFO', completionMessage);
   } catch (error) {
+    logError(error, 'Fatal error in main execution');
     console.error("Fatal error:", error);
   }
 })();
+
+// Initialize logging
+function initializeLogging() {
+  ensureLogsDirectory();
+  const startMessage = '='.repeat(50) + '\nScript Started\n' + '='.repeat(50);
+  logToFile(API_LOG_FILE, startMessage);
+  logToFile(ERROR_LOG_FILE, startMessage);
+}
