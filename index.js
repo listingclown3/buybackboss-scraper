@@ -3,23 +3,35 @@ const fs = require("fs");
 const { format } = require("date-fns");
 const path = require("path");
 
-const CSV_FILE_PATH = "phone_prices.csv";
+// Constants
+const CSV_DIR = "csv_files"; // New directory for CSV files
+const LOGS_DIR = "logs";
 const API_ENDPOINT = "https://buybackboss.com/api.php";
 const REQUEST_DELAY = 1000; // 1 second delay between requests
-
-// Logging constants
-const LOGS_DIR = "logs";
-const API_LOG_FILE = path.join(LOGS_DIR, "api.log");
-const ERROR_LOG_FILE = path.join(LOGS_DIR, "error.log");
 const SHOULD_LOG = false;
 
-// Logging utility functions
-function ensureLogsDirectory() {
+// Logging file paths
+const API_LOG_FILE = path.join(LOGS_DIR, "api.log");
+const ERROR_LOG_FILE = path.join(LOGS_DIR, "error.log");
+
+// Ensure directories exist
+function ensureDirectories() {
   if (!fs.existsSync(LOGS_DIR)) {
     fs.mkdirSync(LOGS_DIR);
   }
+  if (!fs.existsSync(CSV_DIR)) {
+    fs.mkdirSync(CSV_DIR);
+  }
 }
 
+// Generate CSV file path with current date
+function getCSVFilePath() {
+  const dateString = format(new Date(), "yyyy-MM-dd");
+  const fileName = `phone_prices_${dateString}.csv`;
+  return path.join(CSV_DIR, fileName);
+}
+
+// Logging utility functions
 function logToFile(filePath, message) {
   const timestamp = format(new Date(), "yyyy-MM-dd HH:mm:ss");
   const logEntry = `[${timestamp}] ${message}\n`;
@@ -39,6 +51,8 @@ function logError(error, context = '') {
 
 // Function to append data to the CSV
 function appendToCSV(data) {
+  const CSV_FILE_PATH = getCSVFilePath(); // Get the CSV file path with the current date
+
   try {
     const csvRow = Object.values(data).join(",") + "\n";
     if (SHOULD_LOG) console.log("Writing row to CSV:", csvRow.trim());
@@ -64,10 +78,10 @@ async function fetchData(attrOptions) {
 
   try {
     const payload = { product_group: "apple-phone", attr_options: attrOptions };
-    
+
     logAPI('REQUEST', `Endpoint: ${API_ENDPOINT}`, {
       step: currentStep,
-      payload: payload
+      payload: payload,
     });
 
     const response = await axios.post(API_ENDPOINT, payload, {
@@ -77,7 +91,7 @@ async function fetchData(attrOptions) {
 
     logAPI('RESPONSE', `Status: ${response.status}`, {
       step: currentStep,
-      data: response.data
+      data: response.data,
     });
 
     return response.data;
@@ -86,35 +100,35 @@ async function fetchData(attrOptions) {
       step: currentStep,
       message: error.message,
       code: error.code,
-      response: error.response ? {
-        status: error.response.status,
-        data: error.response.data
-      } : null
+      response: error.response
+        ? {
+            status: error.response.status,
+            data: error.response.data,
+          }
+        : null,
     };
-    
+
     logError(error, `API Request Failed for ${currentStep}`);
     logAPI('ERROR', `Failed request for ${currentStep}`, errorDetails);
-    
+
     console.error(`Error fetching data for ${currentStep}:`, error.message);
     return null;
   }
 }
 
-// [Previous extraction functions remain the same]
+// Extraction functions
 function extractPhoneModel(selectedOptionList) {
-    const iPhoneOptions = selectedOptionList.filter(option => 
-      option.option_name.startsWith("iPhone")
-    );
-    
-    if (iPhoneOptions.length > 0) {
-      return iPhoneOptions.reduce((longest, current) => 
-        current.option_name.length > longest.option_name.length 
-          ? current 
-          : longest
-      ).option_name;
-    }
-    
-    return "Unknown Model";
+  const iPhoneOptions = selectedOptionList.filter((option) =>
+    option.option_name.startsWith("iPhone")
+  );
+
+  if (iPhoneOptions.length > 0) {
+    return iPhoneOptions.reduce((longest, current) =>
+      current.option_name.length > longest.option_name.length ? current : longest
+    ).option_name;
+  }
+
+  return "Unknown Model";
 }
 
 function extractCarrier(selectedOptionList) {
@@ -131,7 +145,8 @@ function isValidStorage(storage) {
 
 function extractStorage(selectedOptionList) {
   const storageOption = selectedOptionList.find(
-    (option) => option.option_name.includes("GB") || option.option_name.includes("TB")
+    (option) =>
+      option.option_name.includes("GB") || option.option_name.includes("TB")
   );
   return storageOption ? storageOption.option_name : undefined;
 }
@@ -158,12 +173,21 @@ async function processResponse(data, attrOptions) {
       }
 
       if (!phoneModel || !carrier || !storage) {
-        logAPI('ERROR', 'Missing required data fields', { phoneModel, carrier, storage });
-        console.error("Missing required data fields:", { phoneModel, carrier, storage });
+        logAPI('ERROR', 'Missing required data fields', {
+          phoneModel,
+          carrier,
+          storage,
+        });
+        console.error("Missing required data fields:", {
+          phoneModel,
+          carrier,
+          storage,
+        });
         return;
       }
 
-      if (SHOULD_LOG) console.log(`Processing data for: ${phoneModel}, ${carrier}, ${storage}`);
+      if (SHOULD_LOG)
+        console.log(`Processing data for: ${phoneModel}, ${carrier}, ${storage}`);
       logAPI('INFO', 'Parsed product details', { phoneModel, carrier, storage });
 
       const conditions = [
@@ -183,7 +207,7 @@ async function processResponse(data, attrOptions) {
 
             logAPI('PRICE', `Found price for ${phoneModel}`, {
               condition: condition.name,
-              price: price
+              price: price,
             });
 
             appendToCSV({
@@ -215,10 +239,18 @@ async function fetchAndProcessData(attrOptions = ["apple", "iphone"]) {
   await processResponse(data, attrOptions);
 }
 
+// Initialize logging and directories
+function initialize() {
+  ensureDirectories();
+  const startMessage = '='.repeat(50) + '\nScript Started\n' + '='.repeat(50);
+  logToFile(API_LOG_FILE, startMessage);
+  logToFile(ERROR_LOG_FILE, startMessage);
+}
+
 // Main function
 (async () => {
   try {
-    initializeLogging();
+    initialize();
     console.log("Starting script...");
     const startTime = Date.now();
 
@@ -234,11 +266,3 @@ async function fetchAndProcessData(attrOptions = ["apple", "iphone"]) {
     console.error("Fatal error:", error);
   }
 })();
-
-// Initialize logging
-function initializeLogging() {
-  ensureLogsDirectory();
-  const startMessage = '='.repeat(50) + '\nScript Started\n' + '='.repeat(50);
-  logToFile(API_LOG_FILE, startMessage);
-  logToFile(ERROR_LOG_FILE, startMessage);
-}
