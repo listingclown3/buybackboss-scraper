@@ -14,3 +14,6 @@ do whatever you want
 * open issues for bugs/help
 * if you need help go to issues and search for a solution before posting about one
 * for educational purposes only, also buybackboss doesn't have anything in their TOS to prevent this
+
+# todo
+add multi processing (multiple instances?)
