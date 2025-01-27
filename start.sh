@@ -4,7 +4,7 @@
 CSV_FILE="./csv_files/phone_prices_$(date +'%Y-%m-%d').csv"
 API_LOG="./logs/api.log"
 ERROR_LOG="./logs/error.log"
-WEBHOOK_URL="https://discord.com/api/webhooks/1333314349758152795/3m-8AMWTUrqcqjI4HEX58ZSMNpbUp3SPi3IK6IcMz4aEXGSS5TjmVdZlwotyYxuL9ZKw"
+WEBHOOK_URL=""
 MONTHS=3
 HOURS=0
 MINUTES=0
