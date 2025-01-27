@@ -2,10 +2,10 @@
 scrapes buybackboss for saleas prices on iphones (takes forever)
 
 # setup
-install node and npm (sudo apt install npm)
-chmod +x run.sh
-./run.sh
-wait like 8 minutes or so and then out pops a csv file
+- install node and npm (sudo apt install npm)
+- chmod +x run.sh
+- ./run.sh
+- wait like 8 minutes or so and then out pops a csv file
 
 
 do whatever you want
