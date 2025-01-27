@@ -137,7 +137,7 @@ while true; do
 
     # Run the phone data generation script
     echo "Running phone data script..."
-    node mock.js  # Replace with your actual script name
+    node index.js  # Replace with your actual script name
 
     # Stop progress bar
     stop_progress
