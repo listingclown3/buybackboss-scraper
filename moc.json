@@ -1,0 +1,131 @@
+{
+    "product_group_id": "21",
+    "product_group_name": "Apple Phone",
+    "attrList": [
+        {
+            "id": "20",
+            "name": "Brand",
+            "attribute_order": "0"
+        },
+        {
+            "id": "22",
+            "name": "Series",
+            "attribute_order": "1"
+        },
+        {
+            "id": "2",
+            "name": "Model",
+            "attribute_order": "2"
+        },
+        {
+            "id": "24",
+            "name": "Carrier",
+            "attribute_order": "3"
+        },
+        {
+            "id": "4",
+            "name": "Storage",
+            "attribute_order": "4"
+        }
+    ],
+    "conditionList": [
+        {
+            "id": "1",
+            "name": "Faulty",
+            "match_type": "ANY",
+            "condition_order": "0"
+        },
+        {
+            "id": "3",
+            "name": "Fair",
+            "match_type": "ALL",
+            "condition_order": "1"
+        },
+        {
+            "id": "11",
+            "name": "Average",
+            "match_type": "ALL",
+            "condition_order": "2"
+        },
+        {
+            "id": "4",
+            "name": "Good",
+            "match_type": "ALL",
+            "condition_order": "3"
+        },
+        {
+            "id": "5",
+            "name": "Flawless",
+            "match_type": "ALL",
+            "condition_order": "4"
+        },
+        {
+            "id": "6",
+            "name": "Brand New",
+            "match_type": "ALL",
+            "condition_order": "5"
+        }
+    ],
+    "selectedOptionList": [
+        {
+            "id": "801",
+            "option_name": "Apple",
+            "url": "apple",
+            "canonical_url": null
+        },
+        {
+            "id": "1691",
+            "option_name": "iPhone",
+            "url": "iphone",
+            "canonical_url": null
+        },
+        {
+            "id": "3383",
+            "option_name": "iPhone 16 Pro Max",
+            "url": "iphone-16-pro-max",
+            "canonical_url": null
+        },
+        {
+            "id": "1689",
+            "option_name": "AT&T",
+            "url": "at-t",
+            "canonical_url": null
+        },
+        {
+            "id": "204",
+            "option_name": "256GB",
+            "url": "256",
+            "canonical_url": null
+        }
+    ],
+    "price_min_max": {
+        "price_max": "660",
+        "price_min": "149"
+    },
+    "productList": [
+        {
+            "id": "1027",
+            "price_file": "410",
+            "image_url": "https:\/\/firebasestorage.googleapis.com\/v0\/b\/recom-40990.appspot.com\/o\/product-catalog%2Fproduct-images%2Ftuuvn51u8n6k.jpg?generation=1725988721780292&alt=media&token=rh3hxVOYq21Z5Dw6xMFew",
+            "product_uniqid": "P21338320480116911689",
+            "attr_2_id": "3383",
+            "attr_20_id": "801",
+            "attr_24_id": "1689",
+            "attr_22_id": "1691",
+            "attr_4_id": "204",
+            "price_6": "660",
+            "cond_6_live": "1",
+            "price_5": "505",
+            "cond_5_live": "1",
+            "price_4": "495",
+            "cond_4_live": "1",
+            "price_3": "197",
+            "cond_3_live": "1",
+            "price_1": "149",
+            "cond_1_live": "1",
+            "is_live": "1",
+            "price_11": "435",
+            "cond_11_live": "1"
+        }
+    ]
+}
