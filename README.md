@@ -5,8 +5,15 @@ scrapes buybackboss for saleas prices on iphones (takes forever)
 - install node and npm (sudo apt install npm)
 - chmod +x run.sh
 - ./run.sh
-- wait like 8 minutes or so and then out pops a csv file
+- wait like a few minutes or so and then out pops a csv file
 
+# recurring updates
+- follow instructions above
+- after running run.sh
+- chmod +x start.sh
+- cat start.sh and add your discord webhook link
+- ./start.sh
+- follow terminal instructions
 
 do whatever you want
 
