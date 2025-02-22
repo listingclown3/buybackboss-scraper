@@ -1,6 +1,11 @@
 # buybackboss-scraper
 scrapes buybackboss for saleas prices on iphones (takes forever)
 
+# why?
+terms/privacy doesn't say you can't
+- [privacy](https://buybackboss.com/privacy-policy/)
+- [terms](https://buybackboss.com/terms/)
+
 # setup
 - install node and npm (sudo apt install npm)
 - chmod +x run.sh
