@@ -16,7 +16,7 @@ terms/privacy doesn't say you can't
 - follow instructions above
 - after running run.sh
 - chmod +x start.sh
-- cat start.sh and add your discord webhook link
+- nano start.sh and add your discord webhook link
 - ./start.sh
 - follow terminal instructions
 
